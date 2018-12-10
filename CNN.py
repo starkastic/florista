@@ -1,35 +1,43 @@
-from keras.models import Sequential
-from keras.layers import Convolution2D
+from keras.models import Sequential, load_model
+from keras.layers import Convolution2D, ZeroPadding2D
 from keras.layers import MaxPooling2D
-from keras.layers import Dense
+from keras.layers import Dense, Dropout
 from keras.layers import Flatten
 from keras.preprocessing.image import ImageDataGenerator
 
-import tensorflow as tf
 
-#initialise the CNN
-classifier = Sequential()
+model = Sequential()
+model.add(ZeroPadding2D(padding=(1,1), input_shape=(128,128,3)))
+#adds extra border pixels to prevent excessive undersizing
+model.add(Convolution2D(filters=32,kernel_size=(3, 3), activation='relu'))
+model.add(Convolution2D(filters=32, kernel_size=(3, 3), activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(filters=64,kernel_size=(3, 3), activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(filters=64,kernel_size=(3, 3), activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
+model.add(Convolution2D(filters=128,kernel_size=(3, 3), activation='relu'))
+model.add(Convolution2D(filters=128,kernel_size=(3, 3), activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(filters=128,kernel_size=(3, 3), activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
+model.add(Flatten())
+model.add(Dense(units=1024, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(units=512, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(units=256, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(units=5, activation='sigmoid'))
+    
+print ("Create model successfully")
 
-#step 1 - convolution
-classifier.add(Convolution2D(filters = 32, kernel_size = (3, 3), input_shape = (64, 64, 3), activation='relu'))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-#step 2 - max pooling
-classifier.add(MaxPooling2D(pool_size=(2, 2)))
 
-#another convolution layer
-#classifier.add(Convolution2D(filters=32, kernel_size=(3, 3), input_shape = ))
 
-#flattening
-classifier.add(Flatten())
-
-#full connection
-classifier.add(Dense(units = 128, activation = 'relu'))
-classifier.add(Dense(units = 5, activation = 'sigmoid'))
-
-#compile CNN
-classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'] )
-
-#pre
 train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
@@ -38,18 +46,22 @@ train_datagen = ImageDataGenerator(
 
 test_datagen = ImageDataGenerator(rescale=1./255)
 
-training_set = train_datagen.flow_from_directory('Dataset/train',
-                                                    target_size=(64, 64),
+training_set = train_datagen.flow_from_directory('flowers',
+                                                    target_size=(128, 128),
                                                     batch_size=32,
                                                     class_mode='categorical')
 
-test_set = test_datagen.flow_from_directory('Dataset/test',
-                                                        target_size=(150, 150),
-                                                        batch_size=32,
+test_set = test_datagen.flow_from_directory('flowers_test',
+                                                        target_size=(128,128),
+                                                        batch_size=16,
                                                         class_mode='categorical')
 
-classifier.fit_generator(training_set,
-                         steps_per_epoch=4000,
+
+
+model.fit_generator(training_set,
+                         steps_per_epoch=130,
                          epochs=25,
-                         validation_data=test_set,
-                         validation_steps=10)
+                        validation_data=test_set,
+                         validation_steps=8)
+
+model.save("model_75.h5")
